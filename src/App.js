@@ -1,5 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { vocabularyData, encodeStatus, decodeStatus, shuffleVocabulary } from '../data/vocabulary';
+import Statistics from './components/Statistics';
+import WordCard from './components/WordCard';
+import PasswordManager from './components/PasswordManager';
+import ResultDisplay from './components/ResultDisplay';
 
 const TOTAL_WORDS = vocabularyData.length; // 本番では3200になる予定
 const ITEMS_PER_SESSION = 10; // 1回のセッションで出題する単語数
@@ -16,8 +20,6 @@ function App() {
   const [password, setPassword] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [sessionCompleted, setSessionCompleted] = useState(false);
-  const [copySuccess, setCopySuccess] = useState('');
-  const passwordRef = useRef(null);
 
   // 初期化時にセッションの単語を選択
   useEffect(() => {
@@ -110,28 +112,8 @@ function App() {
   };
 
   // パスワードが変更されたときの処理
-  const handlePasswordChange = (e) => {
-    const newPassword = e.target.value;
+  const handlePasswordChange = (newPassword) => {
     setPassword(newPassword);
-    // クリップボードコピーの成功メッセージをクリア
-    setCopySuccess('');
-  };
-
-  // パスワードをクリップボードにコピーする
-  const copyToClipboard = () => {
-    if (passwordRef.current) {
-      passwordRef.current.select();
-      try {
-        document.execCommand('copy');
-        setCopySuccess('コピーしました！');
-        // 数秒後にメッセージを消す
-        setTimeout(() => setCopySuccess(''), 3000);
-      } catch (err) {
-        setCopySuccess('コピーに失敗しました。');
-      }
-      // 選択状態を解除
-      window.getSelection().removeAllRanges();
-    }
   };
 
   // パスワードを適用する
@@ -146,95 +128,55 @@ function App() {
       setWrongCount(TOTAL_WORDS - correct);
       
       localStorage.setItem('vocabPassword', password);
-      setCopySuccess('進捗状況を復元しました！');
-      setTimeout(() => setCopySuccess(''), 3000);
+      return true;
     } catch (error) {
-      setCopySuccess('無効なパスワードです。正しいパスワードを入力してください。');
-      setTimeout(() => setCopySuccess(''), 3000);
+      return false;
     }
   };
 
   // リセット機能
   const resetProgress = () => {
-    if (window.confirm('本当に進捗をリセットしますか？この操作は元に戻せません。')) {
-      const newStatus = Array(TOTAL_WORDS).fill(false);
-      setWordStatus(newStatus);
-      setCorrectCount(0);
-      setWrongCount(0);
-      const newPassword = encodeStatus(newStatus);
-      setPassword(newPassword);
-      localStorage.setItem('vocabPassword', newPassword);
-      startNewSession();
-    }
+    const newStatus = Array(TOTAL_WORDS).fill(false);
+    setWordStatus(newStatus);
+    setCorrectCount(0);
+    setWrongCount(0);
+    const newPassword = encodeStatus(newStatus);
+    setPassword(newPassword);
+    localStorage.setItem('vocabPassword', newPassword);
+    startNewSession();
+    return true;
   };
 
-  // 結果画面の表示
-  const renderResults = () => {
-    const sessionCorrect = currentSessionWords.filter((word, index) => {
-      const wordIndex = vocabularyData.findIndex(item => item.word === word.word);
-      return wordStatus[wordIndex];
-    }).length;
-    
-    return (
-      <div className="result-display">
-        <h2>セッション結果</h2>
-        <p>今回のセッションで {sessionCorrect} / {ITEMS_PER_SESSION} 問正解しました！</p>
-        <p>全体の進捗状況: {correctCount} / {TOTAL_WORDS} 問正解 ({Math.round((correctCount / TOTAL_WORDS) * 100)}%)</p>
-        
-        <div className="progress-bar">
-          <div 
-            className="progress-fill" 
-            style={{ width: `${(correctCount / TOTAL_WORDS) * 100}%` }}
-          ></div>
-        </div>
-        
-        <button className="btn" onClick={startNewSession}>新しいセッション開始</button>
-      </div>
-    );
-  };
+  // セッションの正解数を計算
+  const sessionCorrect = currentSessionWords.filter((word) => {
+    const wordIndex = vocabularyData.findIndex(item => item.word === word.word);
+    return wordStatus[wordIndex];
+  }).length;
 
   return (
     <div className="container">
-      <h1>英検1級単語テスト</h1>
+      <header className="app-header">
+        <h1 className="app-title">英検1級単語テスト</h1>
+      </header>
       
-      <div className="stats">
-        <div>正解: {correctCount}</div>
-        <div>不正解: {wrongCount}</div>
-        <div>進捗: {Math.round((correctCount / TOTAL_WORDS) * 100)}%</div>
-      </div>
+      <Statistics 
+        correctCount={correctCount} 
+        totalWords={TOTAL_WORDS} 
+        wrongCount={wrongCount} 
+      />
       
       {!showResults ? (
         <>
-          <div className="word-card">
-            <div className="word">{currentWord.word}</div>
-            
-            <div className="options">
-              {shuffledOptions.map((option, index) => (
-                <div 
-                  key={index}
-                  className={`option ${selectedOption === option ? 'selected' : ''} ${
-                    isAnswered && option === currentWord.meaning ? 'correct' : 
-                    isAnswered && selectedOption === option ? 'incorrect' : ''
-                  }`}
-                  onClick={() => handleOptionClick(option)}
-                >
-                  {option}
-                </div>
-              ))}
-            </div>
-            
-            <div className="buttons">
-              {isAnswered ? (
-                <button className="btn btn-next" onClick={handleNextWord}>
-                  {currentWordIndex < currentSessionWords.length - 1 ? '次の単語' : '結果を見る'}
-                </button>
-              ) : (
-                <button className="btn" disabled>
-                  回答を選択してください
-                </button>
-              )}
-            </div>
-          </div>
+          <WordCard 
+            word={currentWord.word}
+            options={shuffledOptions}
+            selectedOption={selectedOption}
+            isAnswered={isAnswered}
+            correctMeaning={currentWord.meaning}
+            onOptionClick={handleOptionClick}
+            onNextClick={handleNextWord}
+            isLastWord={currentWordIndex === currentSessionWords.length - 1}
+          />
           
           <div className="progress-bar">
             <div 
@@ -244,35 +186,25 @@ function App() {
           </div>
         </>
       ) : (
-        renderResults()
+        <ResultDisplay 
+          sessionCorrect={sessionCorrect}
+          sessionTotal={ITEMS_PER_SESSION}
+          totalCorrect={correctCount}
+          totalWords={TOTAL_WORDS}
+          onStartNewSession={startNewSession}
+        />
       )}
       
-      <div className="password-section">
-        <h3>進捗管理（パスワード）</h3>
-        <p>下記のパスワードをコピーして保存すると、後でこのパスワードを使って進捗状況を復元できます。</p>
-        
-        <div className="password-container">
-          <input 
-            type="text" 
-            ref={passwordRef}
-            value={password}
-            onChange={handlePasswordChange}
-            placeholder="パスワードを入力または保存してください"
-          />
-          <button className="btn btn-copy" onClick={copyToClipboard}>
-            コピー
-          </button>
-        </div>
-        
-        {copySuccess && <div className="copy-message">{copySuccess}</div>}
-        
-        <div className="password-buttons">
-          <button className="btn" onClick={applyPassword}>パスワードを適用</button>
-          <button className="btn btn-danger" onClick={resetProgress}>
-            進捗リセット
-          </button>
-        </div>
-      </div>
+      <PasswordManager 
+        password={password}
+        onPasswordChange={handlePasswordChange}
+        onApplyPassword={applyPassword}
+        onResetProgress={resetProgress}
+      />
+
+      <footer className="app-footer">
+        <p>© 2025 英検1級単語テスト - <a href="https://github.com/gghatano/eiken1-vocab-test" target="_blank" rel="noopener noreferrer">GitHub</a></p>
+      </footer>
     </div>
   );
 }
