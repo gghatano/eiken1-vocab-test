@@ -121,33 +121,71 @@ export function shuffleVocabulary(vocabulary) {
   return shuffled;
 }
 
-// 状態をエンコードする関数
+// 状態をBase64でエンコードする関数
 export function encodeStatus(status) {
-  // 各ビットを16ビットの整数に変換し、それを16進数で表現
-  let encoded = '';
-  for (let i = 0; i < status.length; i += 16) {
-    let chunk = 0;
-    for (let j = 0; j < 16 && i + j < status.length; j++) {
-      if (status[i + j]) {
-        chunk |= (1 << j);
-      }
+  // ビット配列をバイト配列に変換
+  const byteArray = new Uint8Array(Math.ceil(status.length / 8));
+  
+  for (let i = 0; i < status.length; i++) {
+    if (status[i]) {
+      const byteIndex = Math.floor(i / 8);
+      const bitPosition = i % 8;
+      byteArray[byteIndex] |= (1 << bitPosition);
     }
-    encoded += chunk.toString(16).padStart(4, '0');
   }
-  return encoded;
+  
+  // バイト配列を文字列に変換
+  const binary = [];
+  for (let i = 0; i < byteArray.length; i++) {
+    binary.push(String.fromCharCode(byteArray[i]));
+  }
+  const binaryString = binary.join('');
+  
+  // Base64エンコード
+  return btoa(binaryString);
 }
 
-// 状態をデコードする関数
+// Base64からの状態デコード関数
 export function decodeStatus(encoded, totalWords = 3200) {
   const status = Array(totalWords).fill(false);
-  for (let i = 0; i < encoded.length; i += 4) {
-    const chunk = parseInt(encoded.substring(i, i + 4), 16);
-    for (let j = 0; j < 16; j++) {
-      const index = i * 4 + j;
-      if (index < totalWords) {
-        status[index] = ((chunk & (1 << j)) !== 0);
+  
+  try {
+    // Base64デコード
+    const binaryString = atob(encoded);
+    const byteArray = new Uint8Array(binaryString.length);
+    
+    for (let i = 0; i < binaryString.length; i++) {
+      byteArray[i] = binaryString.charCodeAt(i);
+    }
+    
+    // バイト配列からビット配列へ変換
+    for (let i = 0; i < totalWords; i++) {
+      const byteIndex = Math.floor(i / 8);
+      const bitPosition = i % 8;
+      
+      if (byteIndex < byteArray.length) {
+        status[i] = ((byteArray[byteIndex] & (1 << bitPosition)) !== 0);
       }
     }
+  } catch (e) {
+    console.error('Base64デコードエラー:', e);
+    
+    // エラー時、旧フォーマット（16進数）のデコードを試みる
+    try {
+      for (let i = 0; i < encoded.length; i += 4) {
+        const chunk = parseInt(encoded.substring(i, i + 4), 16);
+        for (let j = 0; j < 16; j++) {
+          const index = i / 4 * 16 + j;
+          if (index < totalWords) {
+            status[index] = ((chunk & (1 << j)) !== 0);
+          }
+        }
+      }
+    } catch (innerError) {
+      console.error('旧フォーマットデコードエラー:', innerError);
+      // どちらのデコードも失敗した場合は初期状態を返す
+    }
   }
+  
   return status;
 }
