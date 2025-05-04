@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { vocabularyData, encodeStatus, decodeStatus, shuffleVocabulary } from '../data/vocabulary';
 
 const TOTAL_WORDS = vocabularyData.length; // 本番では3200になる予定
@@ -16,6 +16,8 @@ function App() {
   const [password, setPassword] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [sessionCompleted, setSessionCompleted] = useState(false);
+  const [copySuccess, setCopySuccess] = useState('');
+  const passwordRef = useRef(null);
 
   // 初期化時にセッションの単語を選択
   useEffect(() => {
@@ -111,6 +113,25 @@ function App() {
   const handlePasswordChange = (e) => {
     const newPassword = e.target.value;
     setPassword(newPassword);
+    // クリップボードコピーの成功メッセージをクリア
+    setCopySuccess('');
+  };
+
+  // パスワードをクリップボードにコピーする
+  const copyToClipboard = () => {
+    if (passwordRef.current) {
+      passwordRef.current.select();
+      try {
+        document.execCommand('copy');
+        setCopySuccess('コピーしました！');
+        // 数秒後にメッセージを消す
+        setTimeout(() => setCopySuccess(''), 3000);
+      } catch (err) {
+        setCopySuccess('コピーに失敗しました。');
+      }
+      // 選択状態を解除
+      window.getSelection().removeAllRanges();
+    }
   };
 
   // パスワードを適用する
@@ -125,9 +146,11 @@ function App() {
       setWrongCount(TOTAL_WORDS - correct);
       
       localStorage.setItem('vocabPassword', password);
-      alert('進捗状況を復元しました！');
+      setCopySuccess('進捗状況を復元しました！');
+      setTimeout(() => setCopySuccess(''), 3000);
     } catch (error) {
-      alert('無効なパスワードです。正しいパスワードを入力してください。');
+      setCopySuccess('無効なパスワードです。正しいパスワードを入力してください。');
+      setTimeout(() => setCopySuccess(''), 3000);
     }
   };
 
@@ -227,16 +250,28 @@ function App() {
       <div className="password-section">
         <h3>進捗管理（パスワード）</h3>
         <p>下記のパスワードをコピーして保存すると、後でこのパスワードを使って進捗状況を復元できます。</p>
-        <input 
-          type="text" 
-          value={password}
-          onChange={handlePasswordChange}
-          placeholder="パスワードを入力または保存してください"
-        />
-        <button className="btn" onClick={applyPassword}>パスワードを適用</button>
-        <button className="btn" onClick={resetProgress} style={{ marginLeft: '10px', backgroundColor: '#dc3545' }}>
-          進捗リセット
-        </button>
+        
+        <div className="password-container">
+          <input 
+            type="text" 
+            ref={passwordRef}
+            value={password}
+            onChange={handlePasswordChange}
+            placeholder="パスワードを入力または保存してください"
+          />
+          <button className="btn btn-copy" onClick={copyToClipboard}>
+            コピー
+          </button>
+        </div>
+        
+        {copySuccess && <div className="copy-message">{copySuccess}</div>}
+        
+        <div className="password-buttons">
+          <button className="btn" onClick={applyPassword}>パスワードを適用</button>
+          <button className="btn btn-danger" onClick={resetProgress}>
+            進捗リセット
+          </button>
+        </div>
       </div>
     </div>
   );
