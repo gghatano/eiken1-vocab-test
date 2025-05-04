@@ -33,13 +33,15 @@ function App() {
     const savedPassword = localStorage.getItem('vocabPassword');
     if (savedPassword) {
       setPassword(savedPassword);
-      const decodedStatus = decodeStatus(savedPassword, TOTAL_WORDS);
-      setWordStatus(decodedStatus);
-      
-      // 正解数と不正解数を計算
-      const correct = decodedStatus.filter(status => status).length;
-      setCorrectCount(correct);
-      setWrongCount(TOTAL_WORDS - correct);
+      // 注意: パスワードは保存するが、状態の復元は行わない
+      // 以下の行をコメントアウトすることで、初期状態は常に0になる
+      // const decodedStatus = decodeStatus(savedPassword, TOTAL_WORDS);
+      // setWordStatus(decodedStatus);
+      // 
+      // // 正解数と不正解数を計算
+      // const correct = decodedStatus.filter(status => status).length;
+      // setCorrectCount(correct);
+      // setWrongCount(TOTAL_WORDS - correct);
     }
   }, []);
 
@@ -137,8 +139,8 @@ function App() {
       
       localStorage.setItem('vocabPassword', password);
       
-      // パスワード適用後も現在のセッションの選択肢の順序は維持する
-      // 新しいセッションを開始しない
+      // パスワード適用後に新しいセッションを開始する
+      startNewSession();
       
       return true;
     } catch (error) {
