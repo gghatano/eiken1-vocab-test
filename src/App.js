@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { vocabularyData, encodeStatus, decodeStatus, shuffleVocabulary } from '../data/vocabulary';
+import { vocabularyData, encodeStatus, decodeStatus, shuffleVocabulary } from './data/vocabulary';
 import Statistics from './components/Statistics';
 import WordCard from './components/WordCard';
 import PasswordManager from './components/PasswordManager';
