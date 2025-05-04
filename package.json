@@ -4,7 +4,7 @@
   "description": "English Vocabulary Test for Eiken Level 1",
   "scripts": {
     "start": "parcel src/index.html",
-    "build": "parcel build src/index.html --public-url ./",
+    "build": "parcel build src/index.html --public-url ./ && node fix-paths.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "generate-vocab": "node scripts/generate-vocabulary.js"
   },
