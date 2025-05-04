@@ -20,6 +20,8 @@ function App() {
   const [password, setPassword] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [sessionCompleted, setSessionCompleted] = useState(false);
+  // 各単語の選択肢をシャッフルした状態を保持する新たなステート
+  const [sessionOptions, setSessionOptions] = useState([]);
 
   // 初期化時にセッションの単語を選択
   useEffect(() => {
@@ -59,7 +61,13 @@ function App() {
       ];
     }
     
+    // セッション開始時に各単語の選択肢をシャッフルし、その状態を保持する
+    const shuffledOptionsArray = sessionWords.map(word => {
+      return [...word.options].sort(() => Math.random() - 0.5);
+    });
+    
     setCurrentSessionWords(sessionWords);
+    setSessionOptions(shuffledOptionsArray);
     setCurrentWordIndex(0);
     setSelectedOption(null);
     setIsAnswered(false);
@@ -70,8 +78,8 @@ function App() {
   // 現在の単語情報を取得
   const currentWord = currentSessionWords[currentWordIndex] || vocabularyData[0];
   
-  // 選択肢をシャッフル
-  const shuffledOptions = [...currentWord.options].sort(() => Math.random() - 0.5);
+  // シャッフル済みの選択肢を使用
+  const currentOptions = sessionOptions[currentWordIndex] || [];
 
   // 選択肢がクリックされたときの処理
   const handleOptionClick = (option) => {
@@ -128,6 +136,10 @@ function App() {
       setWrongCount(TOTAL_WORDS - correct);
       
       localStorage.setItem('vocabPassword', password);
+      
+      // パスワード適用後も現在のセッションの選択肢の順序は維持する
+      // 新しいセッションを開始しない
+      
       return true;
     } catch (error) {
       return false;
@@ -169,7 +181,7 @@ function App() {
         <>
           <WordCard 
             word={currentWord.word}
-            options={shuffledOptions}
+            options={currentOptions}
             selectedOption={selectedOption}
             isAnswered={isAnswered}
             correctMeaning={currentWord.meaning}
